@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Slang Generator ⚡ (Safe Edition)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .neon-bg { background: linear-gradient(135deg, #070a12 0%, #110e29 100%); }
+        .loading-shimmer { animation: shimmer 1.5s infinite linear; background: linear-gradient(90deg, #1e293b 0%, #334155 50%, #1e293b 100%); background-size: 200% 100%; }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        /* スムーズなアコーディオン開閉 */
+        #apiConfigPanel { transition: max-height 0.3s ease-out, opacity 0.2s ease-out; }
+    </style>
+</head>
+<body class="neon-bg text-slate-100 min-h-screen font-sans">
+
+    <nav class="bg-slate-900/80 border-b border-slate-800 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-xl mx-auto px-4 py-3 flex justify-between items-center">
+            <span class="text-xs font-black tracking-wider text-slate-400">TEEN SLANG LAB</span>
+            <button id="toggleConfigBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold transition border border-slate-700">
+                <span id="apiKeyStatusDot" class="w-2 h-2 rounded-full bg-rose-500"></span>
+                🔑 APIキー設定
+            </button>
+        </div>
+
+        <div id="apiConfigPanel" class="max-height-0 opacity-0 overflow-hidden bg-slate-950 border-t border-slate-900 px-4">
+            <div class="max-w-xl mx-auto py-4 space-y-3">
+                <div class="flex justify-between items-center">
+                    <label class="text-xs font-bold text-slate-400">Gemini API Key (Google AI Studio)</label>
+                    <a href="https://aistudio.google.com/" target="_blank" class="text-[10px] text-cyan-400 hover:underline">無料でキーを取得する ↗</a>
+                </div>
+                <div class="flex gap-2">
+                    <input type="password" id="apiKeyInput" placeholder="AIzaSy..." 
+                           class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-sm font-mono text-slate-200 placeholder-slate-700 focus:outline-none focus:ring-1 focus:ring-cyan-400">
+                    <button id="saveKeyBtn" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl text-xs whitespace-nowrap transition">
+                        保存
+                    </button>
+                    <button id="deleteKeyBtn" class="px-3 py-2 bg-slate-800 hover:bg-rose-900/60 text-slate-500 hover:text-rose-200 font-bold rounded-xl text-xs whitespace-nowrap transition">
+                        削除
+                    </button>
+                </div>
+                <p class="text-[10px] text-slate-500">※キーはブラウザのLocalStorageにのみ暗号化されず保存されます。外部サーバーには送信されません。</p>
+            </div>
+        </div>
+    </nav>
+
+    <header class="text-center pt-12 pb-6 px-4">
+        <h1 class="text-3xl font-black tracking-tight bg-gradient-to-r from-pink-500 via-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+            AI Slang Generator ⚡
+        </h1>
+        <p class="text-xs text-slate-400 mt-2">日本語を入力すると、AIがその場で独自の英語ワンフレーズを自動作成</p>
+        
+        <div class="max-w-xl mx-auto mt-6 flex gap-2">
+            <input type="text" id="jpInput" placeholder="例：ガチで焦った、それな、明日暇？など..." 
+                   class="w-full px-5 py-3 rounded-2xl bg-slate-800 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-pink-500 font-bold shadow-inner text-base">
+            <button id="generateBtn" class="px-6 py-3 bg-gradient-to-r from-pink-500 to-indigo-600 hover:from-pink-600 hover:to-indigo-700 font-black rounded-2xl text-sm tracking-wider whitespace-nowrap transition-all shadow-lg active:scale-95">
+                作成！
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-xl mx-auto px-4 pb-12">
+        <div id="apiKeyWarning" class="bg-amber-950/40 border border-amber-800/60 rounded-2xl p-4 text-center space-y-2 mb-6">
+            <p class="text-xs font-bold text-amber-400">⚠️ 動作にはGeminiのAPIキーが必要です</p>
+            <p class="text-[11px] text-amber-500/90 leading-relaxed">右上の「APIキー設定」ボタンを押し、Google AI Studioで発行したご自身のキーを保存してからご利用ください（完全無料）。</p>
+        </div>
+
+        <div id="resultContainer" class="hidden">
+            <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 px-1">AIの自動作成結果</h2>
+            
+            <div id="slangCard" class="bg-slate-900/80 border-2 border-indigo-500/30 rounded-3xl p-6 shadow-2xl transition-all cursor-pointer active:scale-98 group hover:border-indigo-500/60">
+                <div class="flex justify-between items-start mb-4">
+                    <span class="text-[10px] tracking-wider font-extrabold px-2.5 py-0.5 rounded bg-indigo-950 text-indigo-400 border border-indigo-800/60">
+                        AI GENERATED SLANG
+                    </span>
+                    <span class="text-slate-500 text-xs font-bold">👉 タップでコピー</span>
+                </div>
+                
+                <h3 id="outPhrase" class="text-3xl font-black text-cyan-400 tracking-wide font-mono mb-2 group-hover:text-white transition">---</h3>
+                <p id="outMeaning" class="text-base font-bold text-pink-400 mb-4">意味: ---</p>
+                
+                <div class="pt-4 border-t border-slate-800">
+                    <h4 class="text-xs font-bold text-slate-400 mb-1">解説・シチュエーション：</h4>
+                    <p id="outSituation" class="text-xs text-slate-400 leading-relaxed bg-slate-950/60 p-3 rounded-xl mt-1">---</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="loadingView" class="hidden space-y-4">
+            <div class="h-4 w-24 loading-shimmer rounded"></div>
+            <div class="h-48 w-full loading-shimmer rounded-3xl"></div>
+        </div>
+    </main>
+
+    <div id="toast" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-cyan-500 to-indigo-600 text-white px-6 py-3 rounded-full shadow-2xl font-bold text-sm opacity-0 transition-opacity duration-300 pointer-events-none z-50">
+        Copied AI Slang! ⚡
+    </div>
+
+    <script type="module">
+        import { GoogleGenAI } from "https://esm.run/@google/genai";
+
+        // DOM要素の取得
+        const toggleConfigBtn = document.getElementById('toggleConfigBtn');
+        const apiConfigPanel = document.getElementById('apiConfigPanel');
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const saveKeyBtn = document.getElementById('saveKeyBtn');
+        const deleteKeyBtn = document.getElementById('deleteKeyBtn');
+        const apiKeyStatusDot = document.getElementById('apiKeyStatusDot');
+        const apiKeyWarning = document.getElementById('apiKeyWarning');
+
+        const jpInput = document.getElementById('jpInput');
+        const generateBtn = document.getElementById('generateBtn');
+        const resultContainer = document.getElementById('resultContainer');
+        const loadingView = document.getElementById('loadingView');
+        const toast = document.getElementById('toast');
+
+        const outPhrase = document.getElementById('outPhrase');
+        const outMeaning = document.getElementById('outMeaning');
+        const outSituation = document.getElementById('outSituation');
+
+        // LocalStorageのキー名定義
+        const STORAGE_KEY = "gemini_slang_api_key";
+        let aiInstance = null;
+
+        // 1. 起動時にLocalStorageからキーを読み込む処理
+        function initApiKey() {
+            const savedKey = localStorage.getItem(STORAGE_KEY);
+            if (savedKey) {
+                apiKeyInput.value = savedKey;
+                // インスタンスの生成
+                aiInstance = new GoogleGenAI({ apiKey: savedKey });
+                // UI状態を「設定済み（緑）」にする
+                apiKeyStatusDot.className = "w-2 h-2 rounded-full bg-emerald-500";
+                apiKeyWarning.classList.add('hidden');
+            } else {
+                aiInstance = null;
+                apiKeyStatusDot.className = "w-2 h-2 rounded-full bg-rose-500";
+                apiKeyWarning.classList.remove('hidden');
+            }
+        }
+
+        // 2. キーの保存と削除
+        saveKeyBtn.addEventListener('click', () => {
+            const key = apiKeyInput.value.trim();
+            if (key) {
+                localStorage.setItem(STORAGE_KEY, key);
+                alert("APIキーをブラウザに安全に保存しました！ 💾");
+                initApiKey();
+                closeConfigPanel();
+            } else {
+                alert("キーを入力してください。");
+            }
+        });
+
+        deleteKeyBtn.addEventListener('click', () => {
+            if (confirm("保存されているAPIキーを削除しますか？")) {
+                localStorage.removeItem(STORAGE_KEY);
+                apiKeyInput.value = "";
+                alert("削除しました。");
+                initApiKey();
+            }
+        });
+
+        // 3. 設定パネルのトグル開閉処理
+        let isConfigOpen = false;
+        toggleConfigBtn.addEventListener('click', () => {
+            if (!isConfigOpen) {
+                apiConfigPanel.style.maxHeight = "200px";
+                apiConfigPanel.style.opacity = "1";
+                isConfigOpen = true;
+            } else {
+                closeConfigPanel();
+            }
+        });
+
+        function closeConfigPanel() {
+            apiConfigPanel.style.maxHeight = "0px";
+            apiConfigPanel.style.opacity = "0";
+            isConfigOpen = false;
+        }
+
+        // 4. スラング自動生成ロジック
+        async function generateSlang() {
+            // キーが未設定の場合はパネルを開いて警告
+            if (!aiInstance) {
+                alert("先に右上の設定からGeminiのAPIキーを登録してください。");
+                apiConfigPanel.style.maxHeight = "200px";
+                apiConfigPanel.style.opacity = "1";
+                isConfigOpen = true;
+                apiKeyInput.focus();
+                return;
+            }
+
+            const query = jpInput.value.trim();
+            if (!query) return;
+
+            resultContainer.classList.add('hidden');
+            loadingView.classList.remove('hidden');
+
+            const systemInstruction = `
+                あなたは最先端のトレンドに敏感なアメリカのネイティブ高校生です。
+                ユーザーから入力された日本語のフレーズや日常の感情に最もマッチする、
+                SNS（LINE, Discord, TikTokなど）やリアルな会話で使われている英語の「最新ティーンスラング・ワンフレーズ」を1つだけ作成してください。
+                必ず以下の純粋なJSONオブジェクトのフォーマットだけで返答してください。余計な説明文やMarkdownの枠（\`\`\`json など）は一切含めないでください。
+
+                {
+                    "phrase": "英語のワンフレーズ（例: I'm cooked.）",
+                    "meaning": "日本語での的確で今どきな翻訳意味（例: マジで詰んだ）",
+                    "situation": "どの様なシチュエーションやニュアンスで使うかの詳しい解説（例: テストの手応えがゼロの時や、遅刻が確定した時などにボソッと言う。）"
+                }
+            `;
+
+            try {
+                const response = await aiInstance.models.generateContent({
+                    model: 'gemini-2.5-flash',
+                    contents: `日本語のフレーズ: 「${query}」`,
+                    config: {
+                        systemInstruction: systemInstruction,
+                        responseMimeType: "application/json"
+                    }
+                });
+
+                const data = JSON.parse(response.text);
+
+                outPhrase.innerText = data.phrase;
+                outMeaning.innerText = `意味: ${data.meaning}`;
+                outSituation.innerText = data.situation;
+
+                // コピーイベントの設定
+                document.getElementById('slangCard').onclick = () => {
+                    navigator.clipboard.writeText(data.phrase);
+                    toast.innerText = `「${data.phrase}」をコピーしたよ！ ⚡`;
+                    toast.classList.remove('opacity-0');
+                    toast.classList.add('opacity-100');
+                    setTimeout(() => toast.classList.remove('opacity-100'), 1500);
+                };
+
+                loadingView.classList.add('hidden');
+                resultContainer.classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Gemini API Error:", error);
+                alert("AIの生成に失敗しました。APIキーが正しいか確認してください。");
+                loadingView.classList.add('hidden');
+            }
+        }
+
+        // 生成のイベント登録
+        generateBtn.addEventListener('click', generateSlang);
+        jpInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') generateSlang();
+        });
+
+        // 起動時初期化
+        initApiKey();
+    </script>
+</body>
+</html>
