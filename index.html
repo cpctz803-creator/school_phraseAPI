@@ -96,6 +96,8 @@
     <div id="toast" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-cyan-500 to-indigo-600 text-white px-6 py-3 rounded-full shadow-2xl font-bold text-sm opacity-0 transition-opacity duration-300 pointer-events-none z-50">
         Copied AI Slang! ⚡
     </div>
+
+    <script type="module">
 import { GoogleGenAI } from "https://esm.run/@google/genai";
 
 // DOM要素の取得
@@ -279,7 +281,7 @@ jpInput.addEventListener('keypress', (e) => {
 });
 
 // 起動時初期化
-initApiKey();
+initApiKey(); 
     </script>
 </body>
 </html>
